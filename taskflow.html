@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>taskflow</title>
+    <style>
+        :root{font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif}
+        :root{
+            --bg:#f7f9fc;
+            --card-bg:#ffffff;
+            --text:#111827;
+            --muted:#6b7280;
+            --border:#e6e6e6;
+            --primary:#286ef0;
+            --success:#16a34a;
+            --task-completed-bg:#f0fff4;
+        }
+        body{max-width:980px;margin:24px auto;padding:16px;background:var(--bg);color:var(--text)}
+        header{display:flex;align-items:center;justify-content:space-between}
+        h1{margin:0;font-size:24px}
+        .card{background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:12px;box-shadow:0 4px 14px rgba(16,24,40,0.03)}
+        form.inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+        form.inline > input, form.inline > select, form.inline > textarea{flex:1 1 220px;min-width:140px;padding:8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text)}
+        input,select,textarea{font-size:14px}
+        input[type=date]{padding:6px}
+        button{background:var(--primary);color:#fff;border:none;cursor:pointer;padding:8px 12px;border-radius:8px;transition:transform .08s ease,box-shadow .12s ease,opacity .08s}
+        button:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(34,60,80,0.08)}
+        button:active{transform:translateY(0);box-shadow:none;opacity:0.95}
+        button:focus-visible{outline:3px solid rgba(40,110,240,0.18);outline-offset:2px}
+        .tasks{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+        .task{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:linear-gradient(0deg,var(--card-bg),var(--card-bg))}
+        .task .meta{flex:1;min-width:0}
+        .task.completed{background:var(--task-completed-bg);color:var(--muted)}
+        .title-completed{text-decoration:line-through;color:var(--muted)}
+        .badge{background:var(--success);color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;margin-left:8px}
+        .small{font-size:12px;color:var(--muted)}
+        .actions button{margin-left:6px;padding:6px 8px}
+        .filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+        .card .filters input, .card .filters select{padding:6px;border-radius:6px}
+        .empty-indicator{opacity:0.8}
+
+        /* Responsive */
+        @media (max-width:720px){
+            body{padding:12px}
+            header{flex-direction:column;align-items:flex-start;gap:10px}
+            form.inline{flex-direction:column;align-items:stretch}
+            form.inline > input, form.inline > select, form.inline > textarea{flex:unset;width:100%}
+            .filters{flex-direction:column;align-items:stretch}
+            .task{flex-direction:column;align-items:flex-start}
+            .actions{display:flex;gap:8px;margin-top:8px}
+        }
+        /* dark theme */
+        body.dark{
+            --bg:#0b1220;
+            --card-bg:#0f1724;
+            --text:#e6eef8;
+            --muted:#94a3b8;
+            --border:#1f2937;
+            --primary:#1e90ff;
+            --success:#16a34a;
+            --task-completed-bg:#07321a;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>taskflow</h1>
+            <div style="display:flex;gap:12px;align-items:center">
+            <div class="small">Gerencie tarefas diárias da equipe</div>
+            <button id="themeToggle" style="background:#111827;padding:6px 10px;border-radius:6px">Tema</button>
+            <button id="quickAdd" style="background:var(--success);padding:8px 12px;border-radius:6px">Adicionar tarefa</button>
+        </div>
+    </header>
+
+    <section class="card">
+        <form id="taskForm" class="inline">
+            <input id="title" placeholder="Tarefa (ex: Revisar relatório)" required>
+            <input id="assignee" placeholder="Funcionário (ex: Maria)">
+            <textarea id="description" placeholder="Descrição da tarefa" style="min-width:280px;min-height:48px"></textarea>
+            <select id="category">
+                <option value="Geral">Geral</option>
+                <option value="Estudos">Estudos</option>
+                <option value="Urgente">Urgente</option>
+                <option value="Administrativo">Administrativo</option>
+                <option value="Desenvolvimento">Desenvolvimento</option>
+            </select>
+            <input id="due" type="date" value="2026-08-30" max="2026-08-30">
+            <input type="hidden" id="editId">
+            <button type="submit" id="submitBtn">Adicionar</button>
+            <button type="button" id="cancelEdit" style="display:none">Cancelar edição</button>
+            <button type="button" id="clearBtn">Limpar</button>
+        </form>
+        <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+            <div class="filters">
+                <label class="small">Filtrar:</label>
+                <select id="filterAssignee"><option value="">Todos</option></select>
+                <input id="filterDate" type="date">
+                <select id="filterStatus"><option value="all">Todos</option><option value="pending">Pendentes</option><option value="completed">Concluídas</option></select>
+                <select id="filterCategory"><option value="">Todas categorias</option></select>
+                <input id="search" placeholder="Pesquisar...">
+            </div>
+            <div>
+                <label style="margin-right:8px"><input type="checkbox" id="useServer"> Usar servidor</label>
+                <button id="syncServer">Sincronizar com servidor</button>
+                <button id="export">Exportar</button>
+                <button id="importBtn">Importar</button>
+                <input id="importFile" type="file" accept="application/json" style="display:none">
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div id="tasks" class="tasks"></div>
+        <div id="empty" class="small" style="margin-top:8px">Nenhuma tarefa ainda.</div>
+    </section>
+
+    <script>
+        const STORAGE_KEY = 'taskflow_tasks_v1';
+
+        const $ = id=>document.getElementById(id);
+        const taskForm = $('taskForm');
+        const titleI = $('title');
+        const assigneeI = $('assignee');
+        const descriptionI = $('description');
+        const categoryI = $('category');
+        const dueI = $('due');
+        const filterCategory = $('filterCategory');
+        const MAX_DUE = '2026-08-30';
+        const tasksEl = $('tasks');
+        const emptyEl = $('empty');
+        const filterAssignee = $('filterAssignee');
+        const filterDate = $('filterDate');
+        const filterStatus = $('filterStatus');
+        const searchI = $('search');
+        const exportBtn = $('export');
+        const importBtn = $('importBtn');
+        const importFile = $('importFile');
+        const clearBtn = $('clearBtn');
+        const useServerCb = $('useServer');
+        const syncServerBtn = $('syncServer');
+        const quickAddBtn = $('quickAdd');
+        const themeToggle = $('themeToggle');
+        const THEME_KEY = 'taskflow_theme';
+
+        let tasks = [];
+
+        function load(){
+            try{tasks = JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){tasks=[]}
+            // seed example task when none exist
+            if(!tasks || tasks.length===0){
+                const sample = {id: 'seed-'+Date.now().toString(36), title:'estudar resct', assignee:'', description:'fazer exercicios', category:'Estudos', due:'2026-08-30', completed:false};
+                tasks = [sample];
+                save();
+            }
+        }
+        function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(tasks))}
+
+        function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+
+        function addTask(t){tasks.unshift(t); save(); render();}
+
+        function render(){
+            // filters
+            const fAss = filterAssignee.value.trim();
+            const fDate = filterDate.value;
+            const fStatus = filterStatus.value;
+            const q = searchI.value.trim().toLowerCase();
+
+            tasksEl.innerHTML='';
+            const shown = tasks.filter(t=>{
+                if(fAss && t.assignee !== fAss) return false;
+                if(fDate && t.due !== fDate) return false;
+                if(fStatus && fStatus !== 'all'){
+                    if(fStatus === 'pending' && t.completed) return false;
+                    if(fStatus === 'completed' && !t.completed) return false;
+                }
+                if(q){return t.title.toLowerCase().includes(q) || (t.assignee||'').toLowerCase().includes(q)}
+                return true;
+            });
+
+            if(shown.length===0){emptyEl.style.display='block'}else{emptyEl.style.display='none'}
+
+            shown.forEach(t=>{
+                const item = document.createElement('div'); item.className='task'+(t.completed? ' completed':'');
+                const cb = document.createElement('input'); cb.type='checkbox'; cb.checked = !!t.completed;
+                cb.addEventListener('change',()=>{t.completed = cb.checked; save(); render();});
+
+                    const meta = document.createElement('div'); meta.className='meta';
+                    const title = document.createElement('div'); title.textContent = t.title;
+                    if(t.completed) title.className = 'title-completed';
+                    const sub = document.createElement('div'); sub.className='small'; sub.textContent = (t.assignee? '→ '+t.assignee+' • ':'') + (t.due || 'sem data');
+                    const desc = document.createElement('div'); desc.className='small'; desc.textContent = t.description && t.description.trim() ? t.description : 'fazendo exercicios sobre useState';
+                    const cat = document.createElement('div'); cat.className='small'; cat.textContent = 'Categoria: ' + (t.category || 'Geral');
+                    if(t.completed){ const b = document.createElement('span'); b.className='badge'; b.textContent='Concluída'; title.appendChild(b); }
+                    meta.appendChild(title); meta.appendChild(sub); meta.appendChild(desc); meta.appendChild(cat);
+
+                const actions = document.createElement('div'); actions.className='actions';
+                const editBtn = document.createElement('button'); editBtn.textContent='Editar';
+                editBtn.addEventListener('click', (e)=>{ e.preventDefault(); startEdit(t.id); });
+                const delBtn = document.createElement('button'); delBtn.textContent='Excluir';
+                delBtn.addEventListener('click', ()=>{ if(confirm('Excluir tarefa?')){ tasks = tasks.filter(x=>x.id!==t.id); save(); render(); } });
+
+                actions.appendChild(editBtn); actions.appendChild(delBtn);
+
+                item.appendChild(cb); item.appendChild(meta); item.appendChild(actions);
+                tasksEl.appendChild(item);
+            });
+
+            refreshAssigneeFilter();
+            refreshCategoryFilter();
+        }
+
+        function startEdit(id){
+                const t = tasks.find(x=>x.id===id); if(!t) return;
+                titleI.value = t.title; assigneeI.value = t.assignee||''; descriptionI.value = t.description || ''; categoryI.value = t.category || 'Geral'; dueI.value = t.due||'';
+                $('editId').value = t.id;
+                $('submitBtn').textContent = 'Salvar';
+                $('cancelEdit').style.display = 'inline-block';
+                // focus title
+                titleI.focus();
+            }
+
+        function cancelEdit(){
+            $('editId').value = '';
+            taskForm.reset();
+            $('submitBtn').textContent = 'Adicionar';
+            $('cancelEdit').style.display = 'none';
+            render();
+        }
+
+        function refreshAssigneeFilter(){
+            const names = Array.from(new Set(tasks.map(t=>t.assignee).filter(Boolean)));
+            const cur = filterAssignee.value;
+            filterAssignee.innerHTML = '<option value="">Todos</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join('');
+            if(names.includes(cur)) filterAssignee.value = cur; else filterAssignee.value='';
+        }
+
+        function refreshCategoryFilter(){
+            const cats = Array.from(new Set(tasks.map(t=>t.category).filter(Boolean)));
+            const cur = filterCategory.value;
+            filterCategory.innerHTML = '<option value="">Todas categorias</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+            if(cats.includes(cur)) filterCategory.value = cur; else filterCategory.value='';
+        }
+
+        taskForm.addEventListener('submit', e=>{
+                e.preventDefault();
+                const t = titleI.value.trim(); if(!t) return;
+                const editId = $('editId').value;
+                if(dueI.value && dueI.value > MAX_DUE){ alert('A data limite não pode ser posterior a 30/08/2026'); return; }
+                if(editId){
+                    const idx = tasks.findIndex(x=>x.id===editId);
+                    if(idx!==-1){
+                        tasks[idx].title = t;
+                        tasks[idx].assignee = assigneeI.value.trim();
+                        tasks[idx].due = dueI.value || '';
+                        tasks[idx].description = descriptionI.value.trim();
+                        tasks[idx].category = categoryI.value || 'Geral';
+                        save(); render();
+                    }
+                    cancelEdit();
+                    return;
+                }
+                const task = {id:uid(), title:t, assignee:assigneeI.value.trim(), description:descriptionI.value.trim(), category:categoryI.value || 'Geral', due:dueI.value || '', completed:false};
+                addTask(task);
+                taskForm.reset();
+            });
+
+        clearBtn.addEventListener('click', ()=>{taskForm.reset();});
+        filterAssignee.addEventListener('change', render);
+        filterDate.addEventListener('change', render);
+        filterStatus.addEventListener('change', render);
+        filterCategory.addEventListener('change', render);
+        searchI.addEventListener('input', render);
+
+        $('cancelEdit').addEventListener('click', cancelEdit);
+
+        exportBtn.addEventListener('click', ()=>{
+            const data = JSON.stringify(tasks, null, 2);
+            const blob = new Blob([data], {type:'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'taskflow-export.json'; a.click(); URL.revokeObjectURL(url);
+        });
+
+        importBtn.addEventListener('click', ()=> importFile.click());
+        importFile.addEventListener('change', async e=>{
+            const f = e.target.files[0]; if(!f) return;
+            const txt = await f.text(); try{ const imported = JSON.parse(txt); if(Array.isArray(imported)){ tasks = imported.concat(tasks); save(); render(); alert('Importado com sucesso'); } }catch(err){ alert('Arquivo inválido') }
+            importFile.value='';
+        });
+
+        // Sync with server
+        async function syncWithServer(){
+            if(!useServerCb.checked){ alert('Ative "Usar servidor" para sincronizar'); return; }
+            try{
+                const res = await fetch('/api/sync', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(tasks)});
+                if(!res.ok) throw new Error('Erro ao sincronizar');
+                const serverTasks = await res.json();
+                tasks = serverTasks;
+                save(); render();
+                alert('Sincronização concluída');
+            }catch(err){ alert('Falha na sincronização: '+err.message); }
+        }
+
+        syncServerBtn.addEventListener('click', syncWithServer);
+
+        // init
+        load(); render();
+
+                // quick add button focuses the title input and scrolls to form
+        if(quickAddBtn){
+            quickAddBtn.addEventListener('click', ()=>{
+                titleI.focus();
+                titleI.scrollIntoView({behavior:'smooth',block:'center'});
+            });
+        }
+
+                // theme init
+                function applyTheme(t){
+                    if(t === 'dark') document.body.classList.add('dark'); else document.body.classList.remove('dark');
+                    if(themeToggle) themeToggle.textContent = t === 'dark' ? 'Escuro' : 'Claro';
+                }
+                const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
+                applyTheme(savedTheme);
+                if(themeToggle){
+                    themeToggle.addEventListener('click', ()=>{
+                        const cur = document.body.classList.contains('dark') ? 'dark' : 'light';
+                        const next = cur === 'dark' ? 'light' : 'dark';
+                        localStorage.setItem(THEME_KEY, next);
+                        applyTheme(next);
+                    });
+                }
+    </script>
+</body>
+</html>
