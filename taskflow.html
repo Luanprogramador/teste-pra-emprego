@@ -85,7 +85,7 @@
                 <option value="Administrativo">Administrativo</option>
                 <option value="Desenvolvimento">Desenvolvimento</option>
             </select>
-            <input id="due" type="date" value="2026-08-30">
+            <input id="due" type="date">
             <input type="hidden" id="editId">
             <button type="submit" id="submitBtn">Adicionar</button>
             <button type="button" id="cancelEdit" style="display:none">Cancelar edição</button>
@@ -153,7 +153,7 @@
             try{tasks = JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){tasks=[]}
             // seed example task when none exist
             if(!tasks || tasks.length===0){
-                const sample = {id: 'seed-'+Date.now().toString(36), title:'estudar resct', assignee:'', description:'fazer exercicios', category:'Estudos', due:'2026-08-30', completed:false};
+                const sample = {id: 'seed-'+Date.now().toString(36), title:'estudar resct', assignee:'', description:'fazer exercicios', category:'Estudos', due:'', completed:false};
                 tasks = [sample];
                 save();
             }
