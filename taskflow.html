@@ -85,7 +85,7 @@
                 <option value="Administrativo">Administrativo</option>
                 <option value="Desenvolvimento">Desenvolvimento</option>
             </select>
-            <input id="due" type="date" value="2026-08-30" max="2026-08-30">
+            <input id="due" type="date" value="2026-08-30">
             <input type="hidden" id="editId">
             <button type="submit" id="submitBtn">Adicionar</button>
             <button type="button" id="cancelEdit" style="display:none">Cancelar edição</button>
@@ -97,6 +97,11 @@
                 <select id="filterAssignee"><option value="">Todos</option></select>
                 <input id="filterDate" type="date">
                 <select id="filterStatus"><option value="all">Todos</option><option value="pending">Pendentes</option><option value="completed">Concluídas</option></select>
+                <div style="display:inline-flex;gap:6px;margin-left:8px">
+                    <button id="statusAllBtn" class="status-filter-btn">Todos (0)</button>
+                    <button id="statusPendingBtn" class="status-filter-btn">Pendentes (0)</button>
+                    <button id="statusCompletedBtn" class="status-filter-btn">Concluídas (0)</button>
+                </div>
                 <select id="filterCategory"><option value="">Todas categorias</option></select>
                 <input id="search" placeholder="Pesquisar...">
             </div>
@@ -126,7 +131,6 @@
         const categoryI = $('category');
         const dueI = $('due');
         const filterCategory = $('filterCategory');
-        const MAX_DUE = '2026-08-30';
         const tasksEl = $('tasks');
         const emptyEl = $('empty');
         const filterAssignee = $('filterAssignee');
@@ -209,6 +213,7 @@
 
             refreshAssigneeFilter();
             refreshCategoryFilter();
+            updateStatusCounters();
         }
 
         function startEdit(id){
@@ -243,11 +248,23 @@
             if(cats.includes(cur)) filterCategory.value = cur; else filterCategory.value='';
         }
 
+        // update status filter buttons with counts
+        function updateStatusCounters(){
+            const total = tasks.length;
+            const completed = tasks.filter(t=>t.completed).length;
+            const pending = total - completed;
+            const allBtn = $('statusAllBtn');
+            const pendingBtn = $('statusPendingBtn');
+            const completedBtn = $('statusCompletedBtn');
+            if(allBtn) allBtn.textContent = `Todos (${total})`;
+            if(pendingBtn) pendingBtn.textContent = `Pendentes (${pending})`;
+            if(completedBtn) completedBtn.textContent = `Concluídas (${completed})`;
+        }
+
         taskForm.addEventListener('submit', e=>{
                 e.preventDefault();
                 const t = titleI.value.trim(); if(!t) return;
                 const editId = $('editId').value;
-                if(dueI.value && dueI.value > MAX_DUE){ alert('A data limite não pode ser posterior a 30/08/2026'); return; }
                 if(editId){
                     const idx = tasks.findIndex(x=>x.id===editId);
                     if(idx!==-1){
@@ -272,6 +289,14 @@
         filterStatus.addEventListener('change', render);
         filterCategory.addEventListener('change', render);
         searchI.addEventListener('input', render);
+
+        // status quick-filter buttons
+        const statusAllBtn = $('statusAllBtn');
+        const statusPendingBtn = $('statusPendingBtn');
+        const statusCompletedBtn = $('statusCompletedBtn');
+        if(statusAllBtn) statusAllBtn.addEventListener('click', ()=>{ filterStatus.value='all'; render(); });
+        if(statusPendingBtn) statusPendingBtn.addEventListener('click', ()=>{ filterStatus.value='pending'; render(); });
+        if(statusCompletedBtn) statusCompletedBtn.addEventListener('click', ()=>{ filterStatus.value='completed'; render(); });
 
         $('cancelEdit').addEventListener('click', cancelEdit);
 
